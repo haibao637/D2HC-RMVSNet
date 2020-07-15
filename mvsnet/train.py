@@ -39,12 +39,7 @@ tf.app.flags.DEFINE_string('dtu_data_root', '/home/haibao637/data/mvs_training/d
 
 tf.app.flags.DEFINE_string('demon_data_root', '/home/haibao637/data/DPSNet/dataset/train/',
                            """Path to dtu dataset.""")
-# tf.app.flags.DEFINE_string('eth3d_data_root', '/home/yanjianfeng/data6//eth3d_training/eth3d/',
-#                            """Path to dtu dataset.""")
-# tf.app.flags.DEFINE_string('logdirs', '/home/yanjianfeng/data5/tf_log',
-#                            """Path to store the log.""")
-# tf.app.flags.DEFINE_string('model_dir', '/home/yanjianfeng/data5/tf_model',
-#                            """Path to save the model.""")
+
 train_time=time.strftime("%y-%m-%d-10")
 model_version="snetgn_singlhomo_ulstm_128_both_interval_scale_1.08_lstmgate"
 tf.app.flags.DEFINE_string('logdirs', os.path.join('/home/haibao637/data/tf_log/',model_version,time.strftime("%H:%M:%S")),

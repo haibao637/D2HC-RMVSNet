@@ -101,16 +101,6 @@ class ConvLSTMCell(rnn_cell_impl.RNNCell):
     # with vs.variable_scope(scope, reuse=tf.AUTO_REUSE):
     new_hidden = _conv([inputs, hidden], self._kernel_shape,
                       4 * self._output_channels, self._use_bias,dilations=1,name="kernel")
-    # new_hidden=nn_ops.relu(new_hidden0)
-
-    # new_hidden = _conv([new_hidden], self._kernel_shape,
-    #                   2 * self._output_channels, self._use_bias,dilations=2,name="kernel1")
-    # new_hidden=nn_ops.relu(new_hidden)
-    # new_hidden = _conv([new_hidden], self._kernel_shape,
-    #                   1 * self._output_channels, self._use_bias,dilations=4,name="kernel2")
-    # new_hidden=nn_ops.relu(new_hidden)
-    # new_hidden = _conv([new_hidden0,new_hidden], self._kernel_shape,
-    #                   4 * self._output_channels, self._use_bias,dilations=1,name="kernel4")
 
 
     gates = array_ops.split(
@@ -240,13 +230,13 @@ def _deconv(args, filter_size, num_features, bias, bias_start=0.0,dilations=1,na
         dilations=dilations,
         padding="SAME")
   if  bias:
-    
+
     res = vs.get_variable(
         "biases", [num_features],
         dtype=dtype,
         initializer=init_ops.constant_initializer(bias_start, dtype=dtype))
- 
-  return res 
+
+  return res
 
 _bn=tf.layers.batch_normalization
 class ConvBnLSTMCell(ConvLSTMCell):
@@ -258,30 +248,19 @@ class DeConvBnLSTMCell(ConvLSTMCell):
     super(ConvBnLSTMCell, self).__init__(conv_ndims, input_shape, output_channels, kernel_shape, dilation=dilation, use_bias=use_bias, skip_connection=skip_connection, forget_bias=forget_bias, initializers=initializers, name=name)
     self._conv=_deconv_bn
 def _deconv_bn(args, filter_size, num_features, bias, bias_start=0.0,dilations=1,relu=False,name="kernel"):
-  res=_deconv(args, filter_size, num_features, bias, bias_start=0.0,dilations=1,name="kernel") 
+  res=_deconv(args, filter_size, num_features, bias, bias_start=0.0,dilations=1,name="kernel")
   res=_bn(res,training=True,reuse=tf.AUTO_REUSE,name=name+"_bn")
   if relu:
     res=tf.nn.relu(res)
-  return res 
+  return res
 def _conv_bn(args, filter_size, num_features, bias, bias_start=0.0,dilations=1,relu=False,name="kernel"):
-  res=_conv(args, filter_size, num_features, bias, bias_start=bias_start,dilations=dilations,name=name) 
+  res=_conv(args, filter_size, num_features, bias, bias_start=bias_start,dilations=dilations,name=name)
   res=_bn(res,training=True,reuse=tf.AUTO_REUSE,name=name+"_bn")
   if relu:
     res=tf.nn.relu(res)
-  return res 
+  return res
 
 
-# (input_tensor,
-#                                                center=center,
-#                                                scale=scale,
-#                                                fused=True,
-#                                                training=self.training,
-#                                                trainable=self.trainable,
-#                                                reuse=self.reuse or reuse,
-#                                                epsilon=self.bn_epsilon,
-#                                                gamma_regularizer=None,  # self.regularizer if scale else None,
-#                                                beta_regularizer=None,  # self.regularizer if center else None,
-#                                                name=name)
 
 class ConvsLSTMCell(rnn_cell_impl.RNNCell):
   """Convolutional LSTM recurrent network cell.
@@ -356,16 +335,6 @@ class ConvsLSTMCell(rnn_cell_impl.RNNCell):
                       2 * self._output_channels, False,dilations=1,relu=True,name="kernel1")
     new_hidden = _conv([new_hidden], self._kernel_shape,
                       4 * self._output_channels, self._use_bias,dilations=1,name="kernel2")
-    # new_hidden=nn_ops.relu(new_hidden0)
-
-    # new_hidden = _conv([new_hidden], self._kernel_shape,
-    #                   2 * self._output_channels, self._use_bias,dilations=2,name="kernel1")
-    # new_hidden=nn_ops.relu(new_hidden)
-    # new_hidden = _conv([new_hidden], self._kernel_shape,
-    #                   1 * self._output_channels, self._use_bias,dilations=4,name="kernel2")
-    # new_hidden=nn_ops.relu(new_hidden)
-    # new_hidden = _conv([new_hidden0,new_hidden], self._kernel_shape,
-    #                   4 * self._output_channels, self._use_bias,dilations=1,name="kernel4")
 
 
     gates = array_ops.split(
