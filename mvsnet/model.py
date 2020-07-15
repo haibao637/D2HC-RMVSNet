@@ -10,12 +10,10 @@ import math
 import tensorflow as tf
 import numpy as np
 from tools.common import Notify
-# from crfasrnn.crfrnn_layer import CrfRnnLayer
 from loss import mvsnet_regression_loss
 
 sys.path.append("../")
 from cnn_wrapper.mvsnet import *
-from convgru import ConvGRUCell, BGRUCell
 from homography_warping import *
 from lstm import *
 FLAGS = tf.app.flags.FLAGS
