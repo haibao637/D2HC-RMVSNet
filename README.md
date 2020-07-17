@@ -1,1 +1,1 @@
-# D2HC-MVSNet
+# D2HC-RMVSNet
