@@ -19,8 +19,7 @@ import numpy as np
 import tensorflow as tf
 
 import matplotlib.pyplot as plt
-# from valid_disp import validation
-# import high_dim_filter_loader
+
 
 sys.path.append("../")
 from tools.common import Notify
@@ -29,7 +28,7 @@ from preprocess import *
 from model import *
 from loss import *
 from homography_warping import get_homographies, homography_warping
-# custom_module = high_dim_filter_loader.custom_module
+
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # paths

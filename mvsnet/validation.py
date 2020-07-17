@@ -26,7 +26,6 @@ from preprocess import *
 from model import *
 from loss import *
 from homography_warping import get_homographies, homography_warping
-from flowmodel import *
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # paths

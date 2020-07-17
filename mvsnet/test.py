@@ -13,7 +13,6 @@ import sys
 import math
 import argparse
 import numpy as np
-# from scipy.spatial.transform import Rotation as R
 import cv2
 import tensorflow as tf
 from  tensorflow.contrib.opt import ScipyOptimizerInterface
@@ -22,7 +21,6 @@ from tools.common import Notify
 from preprocess import *
 from model import *
 from loss import *
-from flowmodel import *
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # dataset parameters
