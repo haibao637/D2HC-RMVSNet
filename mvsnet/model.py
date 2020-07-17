@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 """
-Copyright 2019, Yao Yao, HKUST.
-Loss formulations.
+Copyright 2020, Jianfeng Yan, PKU.
 """
 import queue
 import sys
@@ -155,12 +154,10 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
 
     feature_tower=SNetDS2GN_1({'data':images}, is_training=True, reuse=tf.AUTO_REUSE)
     features=tf.reshape(feature_tower.get_output(),[FLAGS.batch_size,FLAGS.view_num,height,width,32])
-    # features=tf.math.l2_normalize(features,-1)
-    # features=tf.stop_gradient(features)
+
     ref_feature=tf.squeeze(tf.slice(features,[0,0,0,0,0],[-1,1,-1,-1,-1]),1)
     view_features=tf.slice(features,[0,1,0,0,0],[-1,-1,-1,-1,-1])
 
-    # dynamic gpu params
     depth_end = depth_start + (tf.cast(depth_num, tf.float32) - 1) * depth_interval
     # reference image
     ref_cam = tf.squeeze(tf.slice(cams, [0, 0, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
@@ -168,10 +165,6 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
     # get all homographies
     view_homographies = []
     for view in range(1, FLAGS.view_num):
-        # view_cam = tf.squeeze(tf.slice(cams, [0, view, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
-        # homographies = get_homographies(ref_cam, view_cam, depth_num=depth_num,
-        #                                 depth_start=depth_start, depth_interval=depth_interval)
-        # view_homographies.append(homographies)
         view_cam = tf.squeeze(tf.slice(cams, [0, view, 0, 0, 0], [-1, 1, 2, 4, 4]), axis=1)
         if FLAGS.inverse_depth:
             homographies = get_homographies_inv_depth(ref_cam, view_cam, depth_num=depth_num,
@@ -181,9 +174,7 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
                                             depth_start=depth_start, depth_interval=depth_interval)
         view_homographies.append(homographies)
 
-    gru1_filters = 16
-    gru2_filters = 4
-    gru3_filters = 2
+
     feature_shape = [FLAGS.batch_size, FLAGS.max_h, FLAGS.max_w, 32]
     batch_size,height,width,channel=feature_shape
     cell0=ConvLSTMCell(
@@ -289,9 +280,6 @@ def inference_prob_recurrent(images, cams, depth_num, depth_start, depth_interva
         prob_volume = tf.stack(costs, axis=1)
 
         prob_volume = tf.nn.softmax(-prob_volume, axis=1, name='prob_volume')
-        # depth_maps=tf.stack(depth_maps,1)
-
-        # depth_map=tf.reduce_sum((prob_volume*depth_maps),1)#b,h,w,1
     return prob_volume
 
 
@@ -315,11 +303,9 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end,
     width=tf.shape(feature_tower)[2]
 
     features=tf.reshape(feature_tower,[FLAGS.batch_size,FLAGS.view_num,height,width,32])
-    # features=tf.math.l2_normalize(features,-1)
-    # features=tf.stop_gradient(features)
+
     ref_feature=tf.squeeze(tf.slice(features,[0,0,0,0,0],[-1,1,-1,-1,-1]),1)
     view_features=tf.slice(features,[0,1,0,0,0],[-1,-1,-1,-1,-1])
-
 
     # get all homographies
     view_homographies = []
@@ -333,10 +319,6 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end,
                                             depth_start=depth_start, depth_interval=depth_interval)
         view_homographies.append(homographies)
 
-    # gru unit
-    gru1_filters = 16
-    gru2_filters = 4
-    gru3_filters = 2
     feature_shape = [FLAGS.batch_size, FLAGS.max_h, FLAGS.max_w, 32]
     batch_size,height,width,channel=feature_shape
     gru_input_shape = [feature_shape[1], feature_shape[2]]
@@ -423,12 +405,9 @@ def inference_winner_take_all(images, cams, depth_num, depth_start, depth_end,
             weight_sum          += (weight+1)
 
         cost=warped_view_volumes/weight_sum
-        # cost=tf.expand_dims(cost,1)
+
 
         with  tf.name_scope('cost_volume_homography') as scope:
-            # with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
-            print(Notify.INFO,tf.shape(cost),Notify.ENDC)
-
             with tf.variable_scope("rnn/", reuse=tf.AUTO_REUSE):
                 cost0,initial_state0=cell0(cost,state=initial_state0)
                 cost1=tf.nn.max_pool2d(cost0,(2,2),2,'SAME')
