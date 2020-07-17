@@ -116,9 +116,7 @@ class MVSGenerator:
                 images = []
                 cams = []
                 depth_images=[]
-                hists=[]
 
-                # img = cv2.imread(data.image[0])
                 for view in range(self.view_num):
                     img=cv2.imread(data[view][0])
                     img=cv2.resize(img,(FLAGS.max_w,FLAGS.max_h))
@@ -127,40 +125,12 @@ class MVSGenerator:
                     img=center_image(img)
                     images.append(img)
                     cam=load_cam(open(data[view][1]), FLAGS.interval_scale)
-                    # cam[1][3][1] = cam[1][3][1] * FLAGS.interval_scale
-                    # cam=data[view].cam
                     cams.append(cam)
-
                     depth_start=cams[0][1,3,0] + cams[view][1,3,1]
-                    # depth_start = cams[0][1, 3, 0] + cams[view][1,3,1]
-                    # cams[view][1,3,1]*=2.0
                     depth_end = cams[0][1,3,0]+cams[view][1,3,1]*(FLAGS.max_d-2)
-                    # cams[view][1,3,0]=depth_start
-                    # cams[view][1,3,1]=(depth_end-depth_start)/(FLAGS.max_d-1)
                     depth_image = load_pfm(open(data[view][2]))
-                    # depth_image=cv2.resize(depth_image,(depth_image.shape[1]*4,depth_image.shape[0]*4))
-
                     depth_image = mask_depth_image(depth_image, depth_start, depth_end)
-                    # depth_image=np.load(data[view].depth)
-                    # depth_image = mask_depth_image(depth_image, 0.5, 32)
                     depth_images.append(depth_image)
-                # for view in range(self.view_num):
-                #
-                #     image = center_image(cv2.imread(data[2 * view]))
-                #     cam = load_cam(open(data[2 * view + 1]))
-                #     cam[1][3][1] = cam[1][3][1] * (FLAGS.interval_scale)
-                #     images.append(image)
-                #     cams.append(cam)
-                #     depth_image = load_pfm(open(data[2 * self.view_num]))
-                #     depth_images.append(depth_image)
-
-                # mask out-of-range depth pixels (in a relaxed range)
-                # depth_image = load_pfm(open(data.depths[0]))
-                # depth_start = cams[0][1, 3, 0] + cams[0][1, 3, 1]
-                # depth_end = cams[0][1, 3, 0] + (FLAGS.max_d - 2) * cams[0][1, 3, 1]
-                # depth_image = mask_depth_image(depth_image, 0, 10.0)
-
-
 
                 # return mvs input
                 self.counter += 1
@@ -168,23 +138,13 @@ class MVSGenerator:
                 images = np.stack(images, axis=0)
                 cams = np.stack(cams, axis=0)
                 depth_images=np.stack(depth_images,0)
-                # depth_images=np.expand_dims(depth_images,-1)
-                # print(depth_images.shape)
 
-                # print('Forward pass: d_min = %f, d_max = %f.' % \
-                #    (cams[0][1, 3, 0], cams[0][1, 3, 0] + (FLAGS.max_d - 1) * cams[0][1, 3, 1]))
                 yield (images, cams, depth_images,ref_image)
 
-                # return backward mvs input for GRU
-                # if FLAGS.regularization == 'GRU':
-                #     self.counter += 1
-                # start_time = time.time()
+
                 if self.both:
                     cams[0][1, 3, 0] = cams[0][1, 3, 0] + (FLAGS.max_d - 1) * cams[0][1, 3, 1]
                     cams[0][1, 3, 1] = -cams[0][1, 3, 1]
-                    # duration = time.time() - start_time
-                    # print('Back pass: d_min = %f, d_max = %f.' % \
-                    #    (cams[0][1, 3, 0], cams[0][1, 3, 0] + (FLAGS.max_d - 1) * cams[0][1, 3, 1]))
                     yield (images, cams, depth_images,ref_image)
 
 def average_gradients(tower_grads):
@@ -239,13 +199,10 @@ def feed(iterator):
     images, cams, depth_images,ref_image= iterator.get_next()
 
     images.set_shape(tf.TensorShape([None, FLAGS.view_num, None, None, 3]))
-    # gray_image.set_shape(tf.TensorShape([None,None,None,1]))
     cams.set_shape(tf.TensorShape([None, FLAGS.view_num, 2, 4, 4]))
     depth_images.set_shape(tf.TensorShape([None,None, None, None, 1]))
     ref_image.set_shape(tf.TensorShape([None, None, None, 3]))
-    # is_master_gpu = False
-    # if i == 0:
-    #     is_master_gpu = True
+
     depth_image = tf.squeeze(
         tf.slice(depth_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 1]), axis=1)
     depth_start = tf.reshape(
@@ -258,20 +215,6 @@ def feed(iterator):
         prob_map = tf.reduce_max(prob_volume,1)#b,h,w,1
         loss,_,less_one_accuracy,less_three_accuracy,depth_map=mvsnet_classification_loss(prob_volume,depth_image,FLAGS.max_d,depth_start,depth_interval)
 
-        # regularizer_loss = tf.add_n(tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
-        # loss+=regularizer_loss
-        # loss,less_one_accuracy,less_three_accuracy=mvsnet_regression_loss(depth_map,depth_image,depth_interval)
-        # valid_mask=tf.cast(depth_image>0,tf.float32)
-        # op_mask=tf.cast((tf.abs(depth_map-depth_image)<5*depth_interval)&(depth_image>0),tf.float32)
-        # gt_index_volume = tf.one_hot(tf.squeeze(tf.cast(op_mask,tf.int32),-1), 2, axis=-1)#b,h,w,2
-        # valid_count=tf.count_nonzero(valid_mask,dtype=tf.float32)
-        # pas_mask=(1-op_mask)*valid_mask#b,h,w,1
-
-        # cross_entropy_image = -tf.reduce_sum(gt_index_volume * tf.log(mask_volume), axis=-1,keepdims=True)*valid_mask #b,h
-        # percentage=tf.count_nonzero(op_mask,dtype=tf.float32)/valid_count
-        # mask_loss=tf.reduce_sum(cross_entropy_image*op_mask*percentage+cross_entropy_image*pas_mask*(1-percentage))/valid_count
-        # pred_mask=tf.cast(tf.argmax(mask_volume,-1),tf.float32)
-        # pred_mask=tf.expand_dims(pred_mask,-1)
         mask=tf.cast(depth_image>0,tf.float32)
         depth_map=depth_map*mask
         prob_map = prob_map*mask
@@ -282,8 +225,7 @@ def train(traning_list,valid_list):
     """ training mvsnet """
     training_sample_size = len(traning_list)*2
     valid_sample_size = len(valid_list)
-    #if FLAGS.regularization == 'GRU':
-    #if FLAGS.regularization == 'GRU':
+
     # training_sample_size = training_sample_size
     print('sample number: ', training_sample_size)
     print('valid sample number: ', valid_sample_size)
@@ -339,7 +281,7 @@ def train(traning_list,valid_list):
                 summaries.append(tf.summary.image("depth_pred", depth_map,family="train"))
                 summaries.append(tf.summary.image("ref_image", ref_image,family="train"))
                 summaries.append(tf.summary.scalar('loss', loss,family="train"))
-                # summaries.append(tf.summary.scalar('mask_loss', mask_loss,family="train"))
+
                 summaries.append(tf.summary.scalar('less_one_accuracy', less_one_accuracy,family="train"))
                 summaries.append(tf.summary.scalar('less_three_accuracy', less_three_accuracy,family="train"))
                 summaries.append(tf.summary.scalar('lr', lr_op,family="train"))
@@ -393,9 +335,7 @@ def train(traning_list,valid_list):
             # load pre-trained model
             if FLAGS.use_pretrain:
                 pretrained_model_path = os.path.join(FLAGS.model_dir,"snetgn_singlhomo_ulstm_128_both_interval_scale_1.08_bilateral_weight", "GRU", 'model.ckpt')
-#                 pretrained_model_path = os.path.join("/xdata/wuyk/yjf_tf_model/19-07-26-8/GRU/", 'model.ckpt')
-                # pretrained_model_path = os.path.join("/home/haibao637/", 'model.ckpt')
-#
+
                 restorer = tf.train.Saver(tf.global_variables())
                 pretrained_model_path='-'.join([pretrained_model_path, str(FLAGS.ckpt_step)])
                 # restorer.restore(sess, pretrained_model_path)
@@ -404,11 +344,7 @@ def train(traning_list,valid_list):
                 # pretrained_model_path= '-'.join(["/home/haibao637/data5/model/tf_model/3DCNNs/model.ckpt", str(FLAGS.ckpt_step)])
                 # restorer.restore (sess,pretrained_model_path )
                 print(Notify.INFO, 'Pre-trained model restored from %s'%pretrained_model_path, Notify.ENDC)
-                # global_step=tf.assign(global_step,0)
-                # global_step=global_step.assign(0)
-                # total_step =total_step*0
-            # output_global_step=sess.run(global_step,feed_dict={global_step:0})
-            # print("start global step:",output_global_step)
+
             # training several epochs
             for epoch in range(FLAGS.epoch):
 
@@ -483,19 +419,6 @@ def main(argv=None):  # pylint: disable=unused-argument
     train_sample = gen_dtu_resized_path(FLAGS.dtu_data_root)
     # # sample_list=gen_demon_list(FLAGS.demon_data_root)
     valid_sample=gen_dtu_resized_path(FLAGS.dtu_data_root,'validation')
-    # sample_list1=gen_eth3d_path(FLAGS.eth3d_data_root)
-    # sample_list.extend(sample_list1)
-    # Shuffle
-    # random.shuffle(sample_list)
-    # # Training entrance.
-    # # print([(sample_list[0][i].image) for i in range(3)])
-    # train(sample_list,valid_list)
-    # with open("train_pair.txt",'r') as f:
-    #     train_sample=json.load(f)
-    #     print(len(train_sample))
-    # with open("valid_pair.txt",'r') as f:
-    #     valid_sample=json.load(f)
-    #     print(len(valid_sample))
     train(train_sample,valid_sample)
 if __name__ == '__main__':
     print ('Training MVSNet with %d views' % FLAGS.view_num)
