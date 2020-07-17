@@ -292,7 +292,11 @@ def train(traning_list,valid_list):
                     if grad is not None:
                         summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
                 summary_op = tf.summary.merge(summaries)
+
+
+            #################################
             ## valid block
+            #
             # dataset from generator
             # valid_generator = iter(MVSGenerator(valid_list, FLAGS.view_num,False))
             # valid_set = tf.data.Dataset.from_generator(lambda: training_generator, generator_data_type)
@@ -302,7 +306,6 @@ def train(traning_list,valid_list):
             # valid_iterator = valid_set.make_initializable_iterator()
             # with tf.device('/gpu:%d' % 0):
             #     valid_loss,valid_less_one_accuracy,valid_less_three_accuracy,valid_depth_image,valid_depth_map,valid_ref_image=feed(valid_iterator)
-
 
             # valid_summaries=[]
             # # valid_summaries.append(tf.summary.image("mask_gt", valid_mask_gt,family="valid"))
@@ -316,6 +319,8 @@ def train(traning_list,valid_list):
             # valid_summaries.append(tf.summary.scalar('less_three_accuracy', valid_less_three_accuracy,family="valid"))
             # valid_step=tf.assign_add(valid_step,1)
             # valid_summary_op = tf.summary.merge(valid_summaries)
+
+            ###################
         # saver
         saver = tf.train.Saver(tf.global_variables(), max_to_keep=None)
         # initialization option
@@ -324,7 +329,6 @@ def train(traning_list,valid_list):
 
         config.gpu_options.allow_growth = True
 
-        # config.gpu_options.set_per_process_memory_growth()
         with tf.Session(config=config) as sess:
 
             # initialization
@@ -340,9 +344,6 @@ def train(traning_list,valid_list):
                 pretrained_model_path='-'.join([pretrained_model_path, str(FLAGS.ckpt_step)])
                 # restorer.restore(sess, pretrained_model_path)
                 optimistic_restore(sess,pretrained_model_path)
-
-                # pretrained_model_path= '-'.join(["/home/haibao637/data5/model/tf_model/3DCNNs/model.ckpt", str(FLAGS.ckpt_step)])
-                # restorer.restore (sess,pretrained_model_path )
                 print(Notify.INFO, 'Pre-trained model restored from %s'%pretrained_model_path, Notify.ENDC)
 
             # training several epochs
@@ -369,13 +370,12 @@ def train(traning_list,valid_list):
                         saver.save(sess, ckpt_path, global_step=total_step)
                         break
                     duration = time.time() - start_time
-                    # print(out_depth.min(),out_depth.max())
                     # print info
                     if step % FLAGS.display == 0:
                         print(Notify.INFO,
                               'epoch, %d, step %d (%.4f), total_step %d, loss = %.4f, (< 1px) = %.4f, (< 3px) = %.4f (%.3f sec/step)' %
                               (epoch, step,float(step)/float(training_sample_size), total_step, out_loss, out_less_one, out_less_three, duration), Notify.ENDC)
-                        # print(Notify.INFO,'depth min :%.4f depth max:%.4f'%(out_depth_map2.min(),out_depth_map2.max()))
+
                     # write summary
                     if (total_step % (FLAGS.display * 10) == 0):
                         summary_writer.add_summary(out_summary_op, total_step)
@@ -391,6 +391,9 @@ def train(traning_list,valid_list):
                     step += FLAGS.batch_size * FLAGS.num_gpus
                     total_step += FLAGS.batch_size * FLAGS.num_gpus
 
+                ########################################################
+                #validation
+                #
                 # sess.run(valid_iterator.initializer)
                 # step=0
                 # for _ in range(int(valid_sample_size)):
@@ -413,6 +416,8 @@ def train(traning_list,valid_list):
                 #     if (out_step % (FLAGS.display * 10) == 0):
                 #         summary_writer.add_summary(out_summary_op, out_step)
                 #     step += 1
+                #####################################################
+
 def main(argv=None):  # pylint: disable=unused-argument
     """ program entrance """
     # Prepare all training samples
