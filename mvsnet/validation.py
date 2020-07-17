@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-Copyright 2019, Yao Yao, HKUST.
-Training script.
+Copyright 2020, Jianfeng Yan, PKU.
+validation script.
 """
 
 from __future__ import print_function
@@ -102,10 +102,10 @@ class MVSGenerator:
         self.sample_num = len(sample_list)
         self.counter = 0
         self.both=both
-    
+
     def __iter__(self):
         while True:
-            for data in self.sample_list: 
+            for data in self.sample_list:
                 start_time = time.time()
 
                 ###### read input data ######
@@ -113,8 +113,8 @@ class MVSGenerator:
                 cams = []
                 depth_images=[]
                 hists=[]
-                
-                # img = cv2.imread(data.image[0])
+
+
                 for view in range(self.view_num):
                     img=cv2.imread(data[view][0])
                     img=cv2.resize(img,(FLAGS.max_w,FLAGS.max_h))
@@ -123,59 +123,29 @@ class MVSGenerator:
                     img=center_image(img)
                     images.append(img)
                     cam=load_cam(open(data[view][1]), FLAGS.interval_scale)
-                    # cam[1][3][1] = cam[1][3][1] * FLAGS.interval_scale
-                    # cam=data[view].cam
-                    cams.append(cam)
-               
-                    depth_start=cams[0][1,3,0] + cams[view][1,3,1]
-                    # depth_start = cams[0][1, 3, 0] + cams[view][1,3,1]
-                    # cams[view][1,3,1]*=2.0
-                    depth_end = cams[0][1,3,0]+cams[view][1,3,1]*(FLAGS.max_d-2)
-                    # cams[view][1,3,0]=depth_start
-                    # cams[view][1,3,1]=(depth_end-depth_start)/(FLAGS.max_d-1)
-                    depth_image = load_pfm(open(data[view][2]))
-                    # depth_image=cv2.resize(depth_image,(depth_image.shape[1]*4,depth_image.shape[0]*4))
-             
-                    depth_image = mask_depth_image(depth_image, depth_start, depth_end)
-                    # depth_image=np.load(data[view].depth)
-                    # depth_image = mask_depth_image(depth_image, 0.5, 32)
-                    depth_images.append(depth_image)
-                # for view in range(self.view_num):
-                #
-                #     image = center_image(cv2.imread(data[2 * view]))
-                #     cam = load_cam(open(data[2 * view + 1]))
-                #     cam[1][3][1] = cam[1][3][1] * (FLAGS.interval_scale)
-                #     images.append(image)
-                #     cams.append(cam)
-                #     depth_image = load_pfm(open(data[2 * self.view_num]))
-                #     depth_images.append(depth_image)
 
-                # mask out-of-range depth pixels (in a relaxed range)
-                # depth_image = load_pfm(open(data.depths[0]))
-                # depth_start = cams[0][1, 3, 0] + cams[0][1, 3, 1]
-                # depth_end = cams[0][1, 3, 0] + (FLAGS.max_d - 2) * cams[0][1, 3, 1]
-                # depth_image = mask_depth_image(depth_image, 0, 10.0)
-               
-                
-                
+                    cams.append(cam)
+
+                    depth_start=cams[0][1,3,0] + cams[view][1,3,1]
+
+                    depth_end = cams[0][1,3,0]+cams[view][1,3,1]*(FLAGS.max_d-2)
+
+                    depth_image = load_pfm(open(data[view][2]))
+
+                    depth_image = mask_depth_image(depth_image, depth_start, depth_end)
+
+                    depth_images.append(depth_image)
+
+
                 # return mvs input
                 self.counter += 1
                 duration = time.time() - start_time
                 images = np.stack(images, axis=0)
                 cams = np.stack(cams, axis=0)
                 depth_images=np.stack(depth_images,0)
-                # depth_images=np.expand_dims(depth_images,-1)
-                # print(depth_images.shape)
-               
-                # print('Forward pass: d_min = %f, d_max = %f.' % \
-                #    (cams[0][1, 3, 0], cams[0][1, 3, 0] + (FLAGS.max_d - 1) * cams[0][1, 3, 1]))
+
                 yield (images, cams, depth_images,ref_image)
 
-                # return backward mvs input for GRU
-                # if FLAGS.regularization == 'GRU':
-                #     self.counter += 1
-                # start_time = time.time()
-                
 
 
 def valiation(traning_list):
@@ -189,7 +159,7 @@ def valiation(traning_list):
         # training generators
         training_generator = iter(MVSGenerator(traning_list, FLAGS.view_num))
         # generator_data_type = (tf.float32, tf.float32, tf.float32)
-        generator_data_type = (tf.float32, tf.float32, tf.float32,tf.float32) 
+        generator_data_type = (tf.float32, tf.float32, tf.float32,tf.float32)
         # dataset from generator
         training_set = tf.data.Dataset.from_generator(lambda: training_generator, generator_data_type)
         training_set = training_set.batch(FLAGS.batch_size)
@@ -209,15 +179,15 @@ def valiation(traning_list):
         depth_num = tf.cast(
             tf.reshape(tf.slice(cams, [0, 0, 1, 3, 2], [1, 1, 1, 1, 1]), []), "int32")
         depth_end = depth_start + (tf.cast(FLAGS.max_d, tf.float32) - 1) * depth_interval
-                    
+
         depth_image = tf.squeeze(
             tf.slice(depth_images, [0, 0, 0, 0, 0], [-1, 1, -1, -1, 1]), axis=1)
         with tf.device("/gpu:0"):
-            init_depth_map, prob_map = inference_winner_take_all_4(images, cams, 
+            init_depth_map, prob_map = inference_winner_take_all_4(images, cams,
                 FLAGS.max_d, depth_start, depth_end, reg_type='GRU', inverse_depth=FLAGS.inverse_depth)
             loss, less_one_accuracy, less_three_accuracy = mvsnet_regression_loss(
                         init_depth_map, depth_image, depth_interval)
-        
+
 
 
         # initialization option
@@ -262,8 +232,7 @@ def valiation(traning_list):
                             print("End of dataset")  # ==> "End of dataset"
                             break
                         duration = time.time() - start_time
-                        # np.save(os.path.join(output_dir,"%08d"%idx),out_images[:,0,...])
-                        # np.save(os.path.join(output_dir, "%08d_d" % idx), out_depth_map)
+
                         # print info
                         if step % FLAGS.display == 0:
                             print(Notify.INFO,
@@ -287,10 +256,6 @@ def main(argv=None):  # pylint: disable=unused-argument
     # Prepare all training samples
     sample_list = gen_dtu_resized_path(FLAGS.dtu_data_root,mode='validation')
     # Shuffle
-    # random.shuffle(sample_list)
-    # Training entrance.
-    # pretrained_model_path = os.path.join(FLAGS.model_dir, "19-07-22-8", FLAGS.regularization, 'model.ckpt')
-    # print('-'.join([pretrained_model_path, str(5000)]))
     valiation(sample_list)
 
 
