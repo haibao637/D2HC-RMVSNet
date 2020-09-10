@@ -8,7 +8,6 @@
   - Download
   - Preprocessed training/validation data: BlendedMVS, DTU and ETH3D. More training resources could be found in BlendedMVS github page
   - Preprocessed testing data: DTU testing set, Tanks and Temples testing set and training set
-  - Pretrained models: pretrained on BlendedMVS, on DTU 
 
 ### dataset preparation:
   see https://github.com/YoYo000/MVSNet
